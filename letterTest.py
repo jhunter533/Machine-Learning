@@ -1,10 +1,20 @@
+import pandas as pd
 import tensorflow as tf
 import numpy as np
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.models import Model
 
-mnist =tf.keras.datasets.mnist
+dataRaw=pd.read_csv("letter-recognition.csv")
+dataRaw.head()
+dataRaw.tail()
+print("Dimensions: ",dataRaw.shape,"\n")
+print(dataRaw.info())
+dataRaw.head()
+let=list(np.sort(dataRaw['letter'].unique()))
+print(let)
+print(dataRaw.columns)
+
 (xTrain,yTrain),(xTest,yTest)=mnist.load_data()
 xTrain=xTrain/255
 xTest=xTest/255
@@ -22,8 +32,5 @@ model.fit(xTrain,yTrain,epochs=10)
 model.evaluate(xTest,yTest)
 
 model.summary()
-
-
-
 
 
