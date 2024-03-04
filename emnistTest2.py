@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from emnist import extract_training_samples,extract_test_samples
 
 (xTrain,yTrain),(xTest,yTest)=extract_training_samples('balanced'),extract_test_samples('balanced')
+#if you do digits it has 99.69 accuracy with 10 out and 64 dense
 xTrain=xTrain/255
 xTest=xTest/255
 
@@ -48,7 +49,7 @@ model=tf.keras.models.Sequential([
     tf.keras.layers.BatchNormalization(),
     tf.keras.layers.MaxPooling2D(2,2),
     tf.keras.layers.Flatten(),
-    tf.keras.layers.Dense(128,activation='relu'),
+    tf.keras.layers.Dense(64,activation='relu'),
     tf.keras.layers.Dropout(.5),
     tf.keras.layers.Dense(47,activation='softmax')
     ])
