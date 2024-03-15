@@ -1,31 +1,34 @@
-import os
-import torch 
-from torch import nn
-from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader,TensorDataset
+from torchvision import transforms, datasets
+import numpy as np
+import matplotlib.pyplot as plt
+from torchvision.transforms import ToTensor
 
-device =(
-         "cuda"
-         if torch.cuda.is_available()
-         else "mps"
-         if torch.backends.mps.is_available()
-         else "cpu"
-         )
-class NeuralNetwork(nn.Module):
-     def __init__(self):
-         super().__init__()
-         self.flatten=nn.Flatten()
-         self.linear_relu_stack=nn.Sequential(
-                 nn.Linear(28*28,512),
-                 nn.ReLU(),
-                 nn.Linear(512,512),
-                 nn.ReLU(),
-                 nn.Linear(512,10),
-                 )
-         def forward(self,x):
-             x=self.flatten(x)
-             logits=self.linear_relu_stack(x)
-             return logits
+#the to tensor is what converts the image into numbers, 3 channels, and the brightness 0 to 255 which is scaled to 0 to 1
+# normalize is standard deviation and mean normalizing
+trainData=datasets.MNIST(root ='data',train=True,transform=ToTensor(),download=True)
+testData=datasets.MNIST(root='data',train=False,transform=ToTensor())
+device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device
+print(trainData)
+print(testData)
 
-model=NeuralNetwork().to(device)
-print(model)
+print(trainData.data.size())
+print(trainData.targets.size())
+
+def GraphSample():
+    figure = plt.figure(figsize=(10,8))
+    cols,rows =5,5
+    for i in range(1,cols*rows+1):
+        sample=torch.randint(len(trainData),size=(1,)).item()
+        img, label=trainData[sample]
+        figure.add_subplot(rows,cols,i)
+        plt.title("'Acutal Label: " +str(label))
+        plt.axis("off")
+        plt.imshow(img.squeeze(),cmap="gray")
+    plt.show()
+
+GraphSample()
