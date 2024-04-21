@@ -1,4 +1,5 @@
 import torch
+from torch.optim import Adam
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader,TensorDataset
@@ -80,6 +81,41 @@ class network(nn.Module):
         #dense 64,dropout,10 softmax
 
 model=network()
+loss_fn=nn.CrossEntropyLoss()
+optimizer=Adam(model.parameters(),lr=.001,weight_decay=.001)
 
+def testModel():
+    model.eval()
+    accuracy=0.0
+    total=0.0
+    with torch.no_grad():
+        for data in testLoad:
+            images,labels=data
+            outputs=model(images)
+            _, predicted = torch.max(outputs.data,1)
+            total+=labels.size(0)
+            accuracy+=(predicted==labels).sum().item()
+        accuracy=(100*accuracy/total)
+        return(accuracy)
+def train(numEpoch):
+    bA=0
+    for epoch in range(numEpoch):
+        runningLoss=0
+        runningAcc=0
+        for i, (images,labels) in enumerate(trainLoad,0):
+            images=Variable(images.to(device))
+            labels=Variable(labels.to(device))
+            optimizer.zero_grad()
+            outputs=model(images)
+            loss=loss_fn(outputs,labels)
+            loss.backward()
+            optimizer.step()
+            runningLoss+=loss.item()
+            if i % 1000==999:
+                runningLoss=0
+            accuracy=testModel()
+            if accuracy>bA:
+                saveModel()
+                bA=accuracy
 GraphSample()
 
