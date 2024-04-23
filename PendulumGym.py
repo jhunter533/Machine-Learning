@@ -9,7 +9,8 @@ from tensorflow.keras.optimizers import Adam
 import time
 import gymnasium as gym
 import random
-
+import matplotlib.pyplot as plt
+#obs 0 1 are -1 to 1, obs 2 is angular vel -8 to 8, action is torque which is -2 to 2
 class ReplayBuffer:
     def __init__(self,memory_capacity=1000,batch_size=64,num_actions=1,num_states=3):
         self.memory_capacity=memory_capacity
@@ -24,10 +25,10 @@ class ReplayBuffer:
         self.done_buffer=np.zeros(self.memory_capacity)
     def record(self,observation,action,reward,next_observation,done):
         index=self.buffer_counter%self.memory_capacity
-        self.state_buffer[index]=observation
+        self.state_buffer[index]=np.squeeze(observation)
         self.action_buffer[index]=action
         self.reward_buffer[index]=reward
-        self.next_state_buffer[index]=next_observation
+        self.next_state_buffer[index]=np.squeeze(next_observation)
         self.done_buffer[index]=done
         self.buffer_counter+=1
     def sample(self):
@@ -59,7 +60,7 @@ class Critic():
         out=Dense(1,activation='linear')(l5)
         return tf.keras.Model([inp,aIn],out)
 class Actor():
-    def __init__(self,num_actions,num_states,learning_rate,action_bound):
+    def __init__(self,num_states,num_actions,learning_rate,action_bound):
         self.num_states=num_states
         self.num_actions=num_actions
         self.lA=learning_rate
@@ -100,28 +101,31 @@ class Agent:
         cWeight=self.critic.model.get_weights()
         tCWeights=self.target_critic.model.get_weights()
         for i in range(len(aWeight)):
-            tAWeight[i]=self.tau*tAWeight+(1-self.tau)*tAWeight
+            tAWeight[i]=self.tau*np.array(aWeight[i])+(1-self.tau)*np.array(tAWeight[i])
         for i in range(len(cWeight)):
-            tCWeights[i]=self.tau*tCWeights+(1-self.tau)*tCWeights
+            tCWeights[i]=self.tau*np.array(cWeight[i])+(1-self.tau)*np.array(tCWeights[i])
         self.target_critic.model.set_weights(tCWeights)
         self.target_actor.model.set_weights(tAWeight)
     def train(self,max_step,max_episode):
 
         for episode in range(max_episode):
-            state=self.env.reset()
+            state,_=self.env.reset()
+            print("state",state)
+            print("episode",episode)
             for step in range(max_step):
+                #self.env.render()
+                #stateA=np.array(state)
                 
-                stateA=np.array(state)
-                
-                state_cat=np.concatenate(stateA).reshape(1,-1)
-                action=self.actor.model.predict(state_cat)
+                #state_cat=np.concatenate(stateA).reshape(1,-1)
+                action=self.actor.model.predict(state.reshape(1,-1))
                 action+=np.random.normal(0,.1,size=self.action_dimension)
                 action=np.clip(action,-self.action_bound,self.action_bound)
                 next_state,reward,done,trunc,info=self.env.step(action)
+                
                 self.buffer.record(state,action,reward,next_state,done)
                 states,actions,rewards,next_states,dones=self.buffer.sample()
                 target_actions=self.target_actor.model.predict(next_states)
-                target_q_values=self.target_critic.predict([next_states,target_actions])
+                target_q_values=self.target_critic.model.predict([next_states,target_actions])
                 targets=rewards+self.gamma*target_q_values*(1-dones)
 
                 with tf.GradientTape() as tape:
@@ -139,10 +143,24 @@ class Agent:
                 if done:
                     break
                 state=next_state
-            
-env=gym.make('Pendulum-v1',render_mode='human')
-max_episode=1000
-max_step=100
+                print(reward)
+                
+    def test(self,max_step):
+        state,_=self.env.reset()
+        total_reward=00
+        for step in range(max_step):
+            action=self.actor.model.predict(state.reshape(1,-1))
+            next_state,reward,done,_,_=self.env.step(action)
+            state=next_state
+            total_reward+=reward
+            if done:
+                break
+            return total_reward
+env=gym.make('Pendulum-v1',render_mode='rgb_array')
+max_episode=100
+max_step=200
 agent=Agent(env)
 agent.train(max_step,max_episode)
+reward=agent.test(max_step)
+print(f'Reward from test:{reward}')
 env.close()
