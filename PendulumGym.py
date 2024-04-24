@@ -10,6 +10,9 @@ import time
 import gymnasium as gym
 import random
 import matplotlib.pyplot as plt
+import pdb
+import time
+
 #obs 0 1 are -1 to 1, obs 2 is angular vel -8 to 8, action is torque which is -2 to 2
 class ReplayBuffer:
     def __init__(self,memory_capacity=1000,batch_size=64,num_actions=1,num_states=3):
@@ -83,13 +86,15 @@ class Agent:
         self.action_dimension=self.env.action_space.shape[0]
         self.action_bound=self.env.action_space.high[0]
         self.buffer=ReplayBuffer()
-        self.learning_rate=.001
-        self.tau=.9
+        self.learning_rate1=.001
+        self.learning_rate2=.002
+        self.tau=.005
         self.gamma=.9
-        self.actor=Actor(self.state_dimension,self.action_dimension,self.learning_rate,self.action_bound)
-        self.critic=Critic(self.state_dimension,self.action_dimension,self.learning_rate)
-        self.target_actor=Actor(self.state_dimension,self.action_dimension,self.learning_rate,self.action_bound)
-        self.target_critic=Critic(self.state_dimension,self.action_dimension,self.learning_rate)
+        
+        self.actor=Actor(self.state_dimension,self.action_dimension,self.learning_rate1,self.action_bound)
+        self.critic=Critic(self.state_dimension,self.action_dimension,self.learning_rate2)
+        self.target_actor=Actor(self.state_dimension,self.action_dimension,self.learning_rate1,self.action_bound)
+        self.target_critic=Critic(self.state_dimension,self.action_dimension,self.learning_rate2)
 
         actor_weights=self.actor.model.get_weights()
         critic_weights=self.critic.model.get_weights()
@@ -107,21 +112,23 @@ class Agent:
         self.target_critic.model.set_weights(tCWeights)
         self.target_actor.model.set_weights(tAWeight)
     def train(self,max_step,max_episode):
-
+        #pdb.set_trace()
         for episode in range(max_episode):
             state,_=self.env.reset()
-            print("state",state)
+            
+            print("/////////////////////")
             print("episode",episode)
             for step in range(max_step):
-                #self.env.render()
-                #stateA=np.array(state)
-                
-                #state_cat=np.concatenate(stateA).reshape(1,-1)
-                action=self.actor.model.predict(state.reshape(1,-1))
+                 
+                action=self.actor.model.predict(state.reshape(1,-1))[0]
+            
                 action+=np.random.normal(0,.1,size=self.action_dimension)
                 action=np.clip(action,-self.action_bound,self.action_bound)
+            
+
                 next_state,reward,done,trunc,info=self.env.step(action)
-                
+                #print(next_state,reward,done,trunc,info)
+                #self.env.render() 
                 self.buffer.record(state,action,reward,next_state,done)
                 states,actions,rewards,next_states,dones=self.buffer.sample()
                 target_actions=self.target_actor.model.predict(next_states)
@@ -147,20 +154,25 @@ class Agent:
                 
     def test(self,max_step):
         state,_=self.env.reset()
-        total_reward=00
+        total_reward=0
         for step in range(max_step):
-            action=self.actor.model.predict(state.reshape(1,-1))
+            action=self.actor.model.predict(state.reshape(1,-1))[0]
+            action =np.clip(action,-self.action_bound,self.action_bound)
+
             next_state,reward,done,_,_=self.env.step(action)
             state=next_state
             total_reward+=reward
             if done:
                 break
             return total_reward
-env=gym.make('Pendulum-v1',render_mode='rgb_array')
-max_episode=100
-max_step=200
+    
+
+env=gym.make('Pendulum-v1',render_mode='human')
+max_episode=50
+max_step=150
 agent=Agent(env)
 agent.train(max_step,max_episode)
 reward=agent.test(max_step)
 print(f'Reward from test:{reward}')
+
 env.close()
